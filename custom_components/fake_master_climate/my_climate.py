@@ -1,8 +1,5 @@
 """
-This platform allows several climate devices to be grouped into one climate device.
-
-For more details about this platform, please refer to the documentation at
-https://home-assistant.io/components/climate.group/
+This platform allows create a dummy climate that acts as a Master and send command to other ( slave ) climate
 
 For more details on climate component, please refer to the documentation at
 https://developers.home-assistant.io/docs/en/entity_climate.html
@@ -34,7 +31,7 @@ from homeassistant.helpers.typing import HomeAssistantType, ConfigType
 
 _LOGGER = logging.getLogger(__name__)
 
-DEFAULT_NAME = "Climate Fake Master"
+DEFAULT_NAME = "Fake Master Climate"
 
 CONF_EXCLUDE = "exclude"
 CONF_PRESET = "preset"
@@ -62,27 +59,12 @@ _PRESET_SCHEMA = vol.Schema(
     }
 )
 
+
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
         vol.Optional(CONF_TEMPERATURE_UNIT, default=TEMP_CELSIUS): cv.string,
         vol.Required(CONF_ENTITIES): cv.entities_domain(climate.DOMAIN),
-        vol.Optional(CONF_EXCLUDE, default=[]): vol.All(
-            cv.ensure_list,
-            [
-                vol.In(
-                    [
-                        PRESET_ACTIVITY,
-                        PRESET_AWAY,
-                        PRESET_BOOST,
-                        PRESET_COMFORT,
-                        PRESET_ECO,
-                        PRESET_HOME,
-                        PRESET_SLEEP,
-                    ]
-                )
-            ],
-        ),
         vol.Optional(CONF_PRESET, default=[]): vol.All(
             cv.ensure_list, [_PRESET_SCHEMA]
         ),
@@ -109,13 +91,13 @@ HVAC_ACTIONS = [
 async def async_setup_platform(
     hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None
 ) -> None:
-    """Initialize climate.group platform."""
+    """Initialize climate.fake_master platform."""
     async_add_entities(
         [
             ClimateFakeMaster(
                 config.get(CONF_NAME),
                 config[CONF_ENTITIES],
-                config.get(CONF_EXCLUDE),
+                config.get(CONF_PRESET),
                 config.get(CONF_TEMPERATURE_UNIT),
             )
         ]
@@ -123,12 +105,12 @@ async def async_setup_platform(
 
 
 class ClimateFakeMaster(ClimateEntity):
-    """Representation of a climate group."""
+    """Representation of a climate fake master."""
 
     def __init__(
-        self, name: str, entity_ids: List[str], excluded: List[str], unit: str
+        self, name: str, entity_ids: List[str], preset: List[str], unit: str
     ) -> None:
-        """Initialize a climate group."""
+        """Initialize a climate fake master."""
         self._name = name  # type: str
         self._entity_ids = entity_ids  # type: List[str]
         if "c" in unit.lower():
@@ -150,7 +132,7 @@ class ClimateFakeMaster(ClimateEntity):
         self._async_unsub_state_changed = None
         self._preset_modes = None
         self._preset = None
-        self._excluded = excluded
+        #self._excluded = excluded
 
     async def async_added_to_hass(self) -> None:
         """Register callbacks."""
@@ -180,7 +162,7 @@ class ClimateFakeMaster(ClimateEntity):
 
     @property
     def available(self) -> bool:
-        """Return whether the climate group is available."""
+        """Return whether the climate fake master is available."""
         return self._available
 
     @property
@@ -234,11 +216,11 @@ class ClimateFakeMaster(ClimateEntity):
 
     @property
     def should_poll(self) -> bool:
-        """No polling needed for a climate group."""
+        """No polling needed for a climate fake master."""
         return False
 
     async def async_set_temperature(self, **kwargs):
-        """Forward the turn_on command to all climate in the climate group."""
+        """Forward the turn_on command to all climate in the climate fake master."""
         data = {ATTR_ENTITY_ID: self._entity_ids}
         if ATTR_HVAC_MODE in kwargs:
             hvac_mode = kwargs.get(ATTR_HVAC_MODE)
@@ -263,7 +245,7 @@ class ClimateFakeMaster(ClimateEntity):
             )
 
     async def async_set_operation_mode(self, operation_mode):
-        """Forward the turn_on command to all climate in the climate group. LEGACY CALL.
+        """Forward the turn_on command to all climate in the climate fake master. LEGACY CALL.
         This will be used only if the hass version is old."""
         data = {ATTR_ENTITY_ID: self._entity_ids, ATTR_HVAC_MODE: operation_mode}
 
@@ -282,7 +264,7 @@ class ClimateFakeMaster(ClimateEntity):
         return self._preset_modes
 
     async def async_set_hvac_mode(self, hvac_mode):
-        """Forward the turn_on command to all climate in the climate group."""
+        """Forward the turn_on command to all climate in the climate fake master."""
         data = {ATTR_ENTITY_ID: self._entity_ids, ATTR_HVAC_MODE: hvac_mode}
 
         await self.hass.services.async_call(
@@ -290,7 +272,8 @@ class ClimateFakeMaster(ClimateEntity):
         )
 
     async def async_update(self):
-        """Query all members and determine the climate group state."""
+        """Query all members and determine the climate fake master state."""
+        """
         raw_states = [self.hass.states.get(x) for x in self._entity_ids]
         states = list(filter(None, raw_states))
 
@@ -310,6 +293,7 @@ class ClimateFakeMaster(ClimateEntity):
         _LOGGER.debug(f"Resulting filtered states: {filtered_states}")
 
         all_modes = [x.state for x in filtered_states]
+        
         # return the Mode (what the thermostat is set to do) in priority order (heat, cool, ...)
         self._mode = None
         # iterate through all hvac modes (skip first, as its off)
@@ -341,14 +325,10 @@ class ClimateFakeMaster(ClimateEntity):
 
         # start add
         self._target_temp_low = _reduce_attribute(filtered_states, ATTR_TARGET_TEMP_LOW)
-        self._target_temp_high = _reduce_attribute(
-            filtered_states, ATTR_TARGET_TEMP_HIGH
-        )
+        self._target_temp_high = _reduce_attribute(filtered_states, ATTR_TARGET_TEMP_HIGH)
         # end add
 
-        self._current_temp = _reduce_attribute(
-            filtered_states, ATTR_CURRENT_TEMPERATURE
-        )
+        self._current_temp = _reduce_attribute(filtered_states, ATTR_CURRENT_TEMPERATURE)
 
         _LOGGER.debug(
             f"Target temp: {self._target_temp}; Target temp low: {self._target_temp_low}; Target temp high: {self._target_temp_high}; Current temp: {self._current_temp}"
@@ -382,14 +362,17 @@ class ClimateFakeMaster(ClimateEntity):
         _LOGGER.debug(
             f"State update complete. Supported: {self._supported_features}, mode: {self._mode}"
         )
+        """
 
     async def async_set_preset_mode(self, preset_mode: str):
-        """Forward the preset_mode to all climate in the climate group."""
+        """Forward the preset_mode to all climate in the climate fake master."""
+        """
         data = {ATTR_ENTITY_ID: self._entity_ids, ATTR_PRESET_MODE: preset_mode}
 
         await self.hass.services.async_call(
             climate.DOMAIN, climate.SERVICE_SET_PRESET_MODE, data, blocking=True
         )
+        """
 
 
 def _find_state_attributes(states: List[State], key: str) -> Iterator[Any]:
