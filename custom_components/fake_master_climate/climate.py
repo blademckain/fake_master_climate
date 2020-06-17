@@ -91,10 +91,10 @@ HVAC_ACTIONS = [
 async def async_setup_platform(
     hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None
 ) -> None:
-    """Initialize climate.group platform."""
+    """Initialize climate.fake_master platform."""
     async_add_entities(
         [
-            ClimateGroup(
+            ClimateFakeMaster(
                 config.get(CONF_NAME),
                 config[CONF_ENTITIES],
                 config.get(CONF_PRESET),
@@ -104,13 +104,13 @@ async def async_setup_platform(
     )
 
 
-class ClimateGroup(ClimateEntity):
-    """Representation of a climate group."""
+class ClimateFakeMaster(ClimateEntity):
+    """Representation of a climate fake master."""
 
     def __init__(
         self, name: str, entity_ids: List[str], preset: List[str], unit: str
     ) -> None:
-        """Initialize a climate group."""
+        """Initialize a climate fake master."""
         self._name = name  # type: str
         self._entity_ids = entity_ids  # type: List[str]
         if "c" in unit.lower():
@@ -162,7 +162,7 @@ class ClimateGroup(ClimateEntity):
 
     @property
     def available(self) -> bool:
-        """Return whether the climate group is available."""
+        """Return whether the climate fake master is available."""
         return self._available
 
     @property
@@ -216,11 +216,11 @@ class ClimateGroup(ClimateEntity):
 
     @property
     def should_poll(self) -> bool:
-        """No polling needed for a climate group."""
+        """No polling needed for a climate fake master."""
         return False
 
     async def async_set_temperature(self, **kwargs):
-        """Forward the turn_on command to all climate in the climate group."""
+        """Forward the turn_on command to all climate in the climate fake master."""
         data = {ATTR_ENTITY_ID: self._entity_ids}
         if ATTR_HVAC_MODE in kwargs:
             hvac_mode = kwargs.get(ATTR_HVAC_MODE)
@@ -245,7 +245,7 @@ class ClimateGroup(ClimateEntity):
             )
 
     async def async_set_operation_mode(self, operation_mode):
-        """Forward the turn_on command to all climate in the climate group. LEGACY CALL.
+        """Forward the turn_on command to all climate in the climate fake master. LEGACY CALL.
         This will be used only if the hass version is old."""
         data = {ATTR_ENTITY_ID: self._entity_ids, ATTR_HVAC_MODE: operation_mode}
 
@@ -264,7 +264,7 @@ class ClimateGroup(ClimateEntity):
         return self._preset_modes
 
     async def async_set_hvac_mode(self, hvac_mode):
-        """Forward the turn_on command to all climate in the climate group."""
+        """Forward the turn_on command to all climate in the climate fake master."""
         data = {ATTR_ENTITY_ID: self._entity_ids, ATTR_HVAC_MODE: hvac_mode}
 
         await self.hass.services.async_call(
@@ -272,7 +272,7 @@ class ClimateGroup(ClimateEntity):
         )
 
     async def async_update(self):
-        """Query all members and determine the climate group state."""
+        """Query all members and determine the climate fake master state."""
         """
         raw_states = [self.hass.states.get(x) for x in self._entity_ids]
         states = list(filter(None, raw_states))
@@ -365,7 +365,7 @@ class ClimateGroup(ClimateEntity):
         """
 
     async def async_set_preset_mode(self, preset_mode: str):
-        """Forward the preset_mode to all climate in the climate group."""
+        """Forward the preset_mode to all climate in the climate fake master."""
         """
         data = {ATTR_ENTITY_ID: self._entity_ids, ATTR_PRESET_MODE: preset_mode}
 
