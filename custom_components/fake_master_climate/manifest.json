@@ -1,0 +1,9 @@
+{
+  "domain": "fake_master_climate",
+  "name": "Fake Master Climate",
+  "documentation": "https://github.com/blademckain/fake_master_climate",
+  "dependencies": [],
+  "codeowners": ["@blademckain"],
+  "requirements": [],
+  "homeassistant": "0.96.0"
+}
